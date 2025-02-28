@@ -5,6 +5,8 @@
 
 #include <QCoreApplication>
 #include <QTimer>
+#include <QJsonObject>
+#include <QJsonDocument>
 
 #define COMPUTER_SEEK_TIMEOUT 30000
 #define APP_SEEK_TIMEOUT 10000
@@ -64,6 +66,10 @@ public:
                 m_ComputerSeeker = new ComputerSeeker(m_ComputerManager, m_ComputerName, q);
                 q->connect(m_ComputerSeeker, &ComputerSeeker::computerFound,
                            q, &Launcher::onComputerFound);
+                // If we weren't provided a predefined PIN, generate one now
+                if (m_PredefinedPin.isEmpty()) {
+                    m_PredefinedPin = m_ComputerManager->generatePinString();
+                }
                 q->connect(m_ComputerSeeker, &ComputerSeeker::errorTimeout,
                            q, &Launcher::onTimeout);
                 m_ComputerSeeker->start(COMPUTER_SEEK_TIMEOUT);
@@ -85,11 +91,58 @@ public:
                     m_TimeoutTimer->start(APP_SEEK_TIMEOUT);
                     emit q->searchingApp();
                 } else {
-                    m_State = StateFailure;
-                    QString msg = QObject::tr("Computer %1 has not been paired. "
-                                              "Please open Moonlight to pair before streaming.")
-                            .arg(event.computer->name);
-                    emit q->failed(msg);
+                    Q_ASSERT(!m_PredefinedPin.isEmpty());
+
+                    // Create the network manager and request
+                    QNetworkAccessManager* networkManager = new QNetworkAccessManager(m_ComputerManager);
+                    QUrl url(QString("https://%1:47990/api/pin").arg(event.computer->activeAddress.address()));
+                    QNetworkRequest request(url);
+                    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+                    sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+                    request.setSslConfiguration(sslConfig);
+
+                    // Configure the request headers
+                    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+                    // Setup basic authentication
+                    QString credentials = QString("%1:%2").arg("utkarshdalal").arg("MoBiLe123");
+                    QByteArray data = credentials.toLocal8Bit().toBase64();
+                    QString headerData = "Basic " + data;
+                    request.setRawHeader("Authorization", headerData.toLocal8Bit());
+
+                    // Create JSON object to send
+                    QJsonObject json;
+                    json["pin"] = m_PredefinedPin;
+
+                    // Convert JSON object to byte array
+                    QJsonDocument doc(json);
+                    QByteArray postData = doc.toJson();
+
+                    // Send the request
+                    QNetworkReply* reply = networkManager->post(request, postData);
+                    // Handle the reply asynchronously
+                    QObject::connect(reply, &QNetworkReply::finished, [this, reply, event, q, app, session]() {
+                        if (reply->error() == QNetworkReply::NoError) {
+                            QByteArray response = reply->readAll();
+                            // Handle response here
+                            qDebug() << "Success: " << response;
+                            event.computer->pairState = NvComputer::PS_PAIRED;
+                            if (m_ComputerManager->forceUpdateAppList(event.computer)) {
+                                qDebug() << "Forced appList update succeeded.";
+                            } else {
+                                qDebug() << "Forced appList update failed.";
+                            }
+                            m_State = StateSeekApp;
+                            m_Computer = event.computer;
+                            m_TimeoutTimer->start(APP_SEEK_TIMEOUT);
+                            emit q->searchingApp();
+                        } else {
+                            QString msg = QObject::tr("Failed to pair with %1").arg(event.computer->name);
+                            emit q->failed(msg);
+                            qDebug() << "Error:" << reply->errorString();
+                        }
+                    });
+                    m_ComputerManager->pairHost(event.computer, m_PredefinedPin);
                 }
             }
             break;
@@ -147,7 +200,7 @@ public:
                 return i;
             }
         }
-        return -1;
+        return 0;
     }
 
     bool isNotStreaming() const
@@ -173,6 +226,7 @@ public:
     Launcher *q_ptr;
     QString m_ComputerName;
     QString m_AppName;
+    QString m_PredefinedPin;
     StreamingPreferences *m_Preferences;
     ComputerManager *m_ComputerManager;
     ComputerSeeker *m_ComputerSeeker;

@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleExecutable</key>
-	<string>Moonlight</string>
+	<string>GameAway</string>
 	<key>CFBundleGetInfoString</key>
 	<string>Stream games and other applications from another PC</string>
 	<key>CFBundleIconFile</key>
 	<string>moonlight</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.moonlight-stream.Moonlight</string>
+	<string>com.gameaway.app</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>CFBundlePackageType</key>
@@ -37,12 +37,25 @@
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Moonlight uses the local network to connect to your gaming PC for streaming.</string>
+	<string>Official app for GameAway Cloud PCs.</string>
 	<key>CFBundleVersion</key>
-	<string>VERSION</string>
+	<string>6.1.0</string>
 	<key>CFBundleShortVersionString</key>
-	<string>VERSION</string>
+	<string>6.1.0</string>
 	<key>CFBundleDisplayName</key>
-	<string>Moonlight</string>
+	<string>GameAway</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+    <dict>
+		<key>CFBundleTypeRole</key>
+		<string>Viewer</string>
+        <key>CFBundleURLName</key>
+        <string>com.gameaway.app</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>gameaway</string>
+        </array>
+    </dict>
+	</array>
 </dict>
 </plist>

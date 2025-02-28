@@ -245,6 +245,8 @@ public:
 
     void clientSideAttributeUpdated(NvComputer* computer);
 
+    bool forceUpdateAppList(NvComputer* computer);
+
 signals:
     void computerStateChanged(NvComputer* computer);
 

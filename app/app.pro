@@ -2,10 +2,10 @@ QT += core quick network quickcontrols2 svg
 CONFIG += c++11
 
 unix:!macx {
-    TARGET = moonlight
+    TARGET = gameaway
 } else {
     # On macOS, this is the name displayed in the global menu bar
-    TARGET = Moonlight
+    TARGET = GameAway
 }
 
 include(../globaldefs.pri)
@@ -545,7 +545,7 @@ unix:!macx: {
 
     target.path = $$PREFIX/$$BINDIR/
 
-    desktop.files = deploy/linux/com.moonlight_stream.Moonlight.desktop
+    desktop.files = deploy/linux/com.moonlight_stream.GameAway.desktop
     desktop.path = $$PREFIX/$$DATADIR/applications/
 
     icons.files = res/moonlight.svg
@@ -558,12 +558,12 @@ unix:!macx: {
 }
 win32 {
     RC_ICONS = moonlight.ico
-    QMAKE_TARGET_COMPANY = Moonlight Game Streaming Project
-    QMAKE_TARGET_DESCRIPTION = Moonlight Game Streaming Client
-    QMAKE_TARGET_PRODUCT = Moonlight
+    QMAKE_TARGET_COMPANY = GameAway
+    QMAKE_TARGET_DESCRIPTION = GameAway Client
+    QMAKE_TARGET_PRODUCT = GameAway
 
     CONFIG -= embed_manifest_exe
-    QMAKE_LFLAGS += /MANIFEST:embed /MANIFESTINPUT:$${PWD}/Moonlight.exe.manifest
+    QMAKE_LFLAGS += /MANIFEST:embed /MANIFESTINPUT:$${PWD}/GameAway.exe.manifest
 }
 macx {
     # Create Info.plist in object dir with the correct version string

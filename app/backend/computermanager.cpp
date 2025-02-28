@@ -545,6 +545,22 @@ void ComputerManager::clientSideAttributeUpdated(NvComputer* computer)
     handleComputerStateChanged(computer);
 }
 
+bool ComputerManager::forceUpdateAppList(NvComputer* computer)
+{
+    NvHTTP http(computer);
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    QSslConfiguration::setDefaultConfiguration(sslConfig);
+    QVector<NvApp> appList;
+    appList = http.getAppList();
+    if (appList.isEmpty()) {
+        return false;
+    }
+
+    QWriteLocker lock(&computer->lock);
+    return computer->updateAppList(appList);
+}
+
 void ComputerManager::handleAboutToQuit()
 {
     QReadLocker lock(&m_Lock);

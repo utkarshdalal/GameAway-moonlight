@@ -12,6 +12,14 @@
 #include <QElapsedTimer>
 #include <QTemporaryFile>
 #include <QRegularExpression>
+#include <QCoreApplication>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QEventLoop>
+
 
 // Don't let SDL hook our main function, since Qt is already
 // doing the same thing. This needs to be before any headers
@@ -306,7 +314,132 @@ LONG WINAPI UnhandledExceptionHandler(struct _EXCEPTION_POINTERS *ExceptionInfo)
 
 int main(int argc, char *argv[])
 {
+    #ifdef Q_OS_WIN32
+        // Grab the original std handles before we potentially redirect them later
+        HANDLE oldConOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        HANDLE oldConErr = GetStdHandle(STD_ERROR_HANDLE);
+    #endif
+
+    #ifdef LOG_TO_FILE
+        QDir tempDir(Path::getLogDir());
+
+    #ifdef Q_OS_WIN32
+        // Only log to a file if the user didn't redirect stderr somewhere else
+        if (IS_UNSPECIFIED_HANDLE(oldConErr))
+    #endif
+        {
+            s_LoggerFile = new QFile("/users/utkarshdalal/Desktop/gameaway-log.log");
+            if (s_LoggerFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QTextStream(stderr) << "Redirecting log output to " << s_LoggerFile->fileName() << Qt::endl;
+                s_LoggerStream.setDevice(s_LoggerFile);
+            }
+        }
+    #endif
+
+        // Serialize log messages on a single thread
+        s_LoggerThread.setMaxThreadCount(1);
+
+        s_LoggerTime.start();
+        qInstallMessageHandler(qtLogToDiskHandler);
+        SDL_LogSetOutputFunction(sdlLogToDiskHandler, nullptr);
+
+    #ifdef HAVE_FFMPEG
+        av_log_set_callback(ffmpegLogToDiskHandler);
+    #endif
+
+    #ifdef Q_OS_WIN32
+        // Create a crash dump when we crash on Windows
+        SetUnhandledExceptionFilter(UnhandledExceptionHandler);
+    #endif
+
+    #ifdef LOG_TO_FILE
+        // Prune the oldest existing logs if there are more than 10
+        QStringList existingLogNames = tempDir.entryList(QStringList("Moonlight-*.log"), QDir::NoFilter, QDir::SortFlag::Time);
+        qInfo() << "Hello";
+        qInfo() << "Argument count is" << argc;
+        qInfo() << "Arguments is" << argv[0];
+        for (int i = 10; i < existingLogNames.size(); i++) {
+            qInfo() << "Removing old log file:" << existingLogNames.at(i);
+            QFile(tempDir.filePath(existingLogNames.at(i))).remove();
+        }
+    #endif
+
+    #if defined(Q_OS_WIN32)
+        // Force AntiHooking.dll to be statically imported and loaded
+        // by ntdll on Win32 platforms by calling a dummy function.
+        AntiHookingDummyImport();
+    #elif defined(Q_OS_LINUX)
+        // Force libssl.so to be directly linked to our binary, so
+        // linuxdeployqt can find it and include it in our AppImage.
+        // QtNetwork will pull it in via dlopen().
+        SSL_free(nullptr);
+    #endif
+    #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+        // Enable fractional High DPI scaling on Qt 5.14 and later
+        QGuiApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+    #endif
+    qInfo() << "Launching app";
     SDL_SetMainReady();
+    QGuiApplication app(argc, argv);
+
+    // Before anything, handle the potential URL scheme
+    QString ipAddress;
+    if (argc > 1) {
+        QUrl url(argv[1]);  // Assume argv[1] might be a URL
+        qInfo() << "url is:" << url;
+        if (url.scheme() == "gameaway" && !url.host().isEmpty()) {
+            ipAddress = url.host().isEmpty() ? url.path() : url.host();
+            qInfo() << "IP from URL scheme:" << ipAddress;
+
+            // Now modify argv directly to simulate the desired command line
+            argv[1] = "stream";  // Replace the URL with 'stream'
+            argv[2] = new char[ipAddress.size() + 1];  // Ensure enough space for the IP address
+            argv[3] = "GameAway.in Virtual Gaming PC";  // App name
+            strcpy(argv[2], ipAddress.toLocal8Bit().constData());  // Copy IP into new argv[3]
+            argc = 4;  // Total arguments count now is 4
+        }
+    }
+    else {
+        QNetworkAccessManager manager;
+        QEventLoop loop;
+
+        // Construct the API request
+        QUrl url("https://ud3t55wq88.execute-api.ap-south-1.amazonaws.com/default/getRigIpFromUserIp");
+        QNetworkRequest request(url);
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+        // Making a GET request
+        QNetworkReply *reply = manager.get(request);
+        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+
+        // Wait for the request to complete
+        loop.exec();
+
+        QString ipAddress;
+        if (reply->error() == QNetworkReply::NoError) {
+            // Successfully got a response
+            QByteArray response = reply->readAll();
+            QJsonObject jsonObj = QJsonDocument::fromJson(response).object();
+
+            // Parse the JSON object to extract the IP address
+            ipAddress = jsonObj["public_ip"].toString();  // Assuming JSON { "ip": "192.168.1.1" }
+            qDebug() << "IP from API:" << ipAddress;
+        } else {
+            // Handle errors
+            qDebug() << "API Request failed:" << reply->errorString();
+            ipAddress = "127.0.0.1";  // Default or fallback IP
+        }
+        reply->deleteLater();
+
+        if (!ipAddress.isEmpty()) {
+            // If the API request is successful or a default IP is set
+            argv[1] = "stream";
+            argv[2] = new char[ipAddress.size() + 1];
+            argv[3] = "GameAway.in Virtual Gaming PC";
+            strcpy(argv[2], ipAddress.toLocal8Bit().constData());
+            argc = 4;
+        }
+    }
 
     // Set the app version for the QCommandLineParser's showVersion() command
     QCoreApplication::setApplicationVersion(VERSION_STR);
@@ -314,9 +447,9 @@ int main(int argc, char *argv[])
     // Set these here to allow us to use the default QSettings constructor.
     // These also ensure that our cache directory is named correctly. As such,
     // it is critical that these be called before Path::initialize().
-    QCoreApplication::setOrganizationName("Moonlight Game Streaming Project");
-    QCoreApplication::setOrganizationDomain("moonlight-stream.com");
-    QCoreApplication::setApplicationName("Moonlight");
+    QCoreApplication::setOrganizationName("GameAway");
+    QCoreApplication::setOrganizationDomain("gameaway.in");
+    QCoreApplication::setApplicationName("GameAway");
 
     if (QFile(QDir::currentPath() + "/portable.dat").exists()) {
         QSettings::setDefaultFormat(QSettings::IniFormat);
@@ -336,64 +469,6 @@ int main(int argc, char *argv[])
         qputenv("QML_DISK_CACHE_PATH", Path::getQmlCacheDir().toUtf8());
     }
 
-#ifdef Q_OS_WIN32
-    // Grab the original std handles before we potentially redirect them later
-    HANDLE oldConOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    HANDLE oldConErr = GetStdHandle(STD_ERROR_HANDLE);
-#endif
-
-#ifdef LOG_TO_FILE
-    QDir tempDir(Path::getLogDir());
-
-#ifdef Q_OS_WIN32
-    // Only log to a file if the user didn't redirect stderr somewhere else
-    if (IS_UNSPECIFIED_HANDLE(oldConErr))
-#endif
-    {
-        s_LoggerFile = new QFile(tempDir.filePath(QString("Moonlight-%1.log").arg(QDateTime::currentSecsSinceEpoch())));
-        if (s_LoggerFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
-            QTextStream(stderr) << "Redirecting log output to " << s_LoggerFile->fileName() << Qt::endl;
-            s_LoggerStream.setDevice(s_LoggerFile);
-        }
-    }
-#endif
-
-    // Serialize log messages on a single thread
-    s_LoggerThread.setMaxThreadCount(1);
-
-    s_LoggerTime.start();
-    qInstallMessageHandler(qtLogToDiskHandler);
-    SDL_LogSetOutputFunction(sdlLogToDiskHandler, nullptr);
-
-#ifdef HAVE_FFMPEG
-    av_log_set_callback(ffmpegLogToDiskHandler);
-#endif
-
-#ifdef Q_OS_WIN32
-    // Create a crash dump when we crash on Windows
-    SetUnhandledExceptionFilter(UnhandledExceptionHandler);
-#endif
-
-#ifdef LOG_TO_FILE
-    // Prune the oldest existing logs if there are more than 10
-    QStringList existingLogNames = tempDir.entryList(QStringList("Moonlight-*.log"), QDir::NoFilter, QDir::SortFlag::Time);
-    for (int i = 10; i < existingLogNames.size(); i++) {
-        qInfo() << "Removing old log file:" << existingLogNames.at(i);
-        QFile(tempDir.filePath(existingLogNames.at(i))).remove();
-    }
-#endif
-
-#if defined(Q_OS_WIN32)
-    // Force AntiHooking.dll to be statically imported and loaded
-    // by ntdll on Win32 platforms by calling a dummy function.
-    AntiHookingDummyImport();
-#elif defined(Q_OS_LINUX)
-    // Force libssl.so to be directly linked to our binary, so
-    // linuxdeployqt can find it and include it in our AppImage.
-    // QtNetwork will pull it in via dlopen().
-    SSL_free(nullptr);
-#endif
-
     // We keep this at function scope to ensure it stays around while we're running,
     // becaue the Qt QPA will need to read it. Since the temporary file is only
     // created when open() is called, this doesn't do any harm for other platforms.
@@ -410,10 +485,6 @@ int main(int argc, char *argv[])
         QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
-        // Enable fractional High DPI scaling on Qt 5.14 and later
-        QGuiApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
-#endif
     }
     else {
 #ifndef STEAM_LINK
@@ -577,8 +648,6 @@ int main(int argc, char *argv[])
     // of caution.
     SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING, "0");
 #endif
-
-    QGuiApplication app(argc, argv);
 
 #ifndef STEAM_LINK
     // Force use of the KMSDRM backend for SDL when using Qt platform plugins
