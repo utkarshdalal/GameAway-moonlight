@@ -5,3 +5,6 @@
 build/
 config.tests/*/.qmake.stash
 config.tests/*/Makefile
+.qtc_clangd/*
+app/*/Contents/*
+app/release/*
