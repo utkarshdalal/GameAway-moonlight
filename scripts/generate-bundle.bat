@@ -71,7 +71,7 @@ msbuild -Restore %SOURCE_ROOT%\wix\MoonlightSetup\MoonlightSetup.wixproj /p:Conf
 if !ERRORLEVEL! NEQ 0 goto Error
 
 rem Rename the installer to match the publishing convention
-ren %INSTALLER_FOLDER%\MoonlightSetup.exe MoonlightSetup-%VERSION%.exe
+ren %INSTALLER_FOLDER%\GameAwaySetup.exe GameAwaySetup-%VERSION%.exe
 
 echo Build successful for Moonlight v%VERSION% installer!
 exit /b 0

@@ -821,8 +821,8 @@
 		<category>Qt</category>
 	</categories>
 
-	<developer_name>Moonlight Game Streaming Team</developer_name>
-	<update_contact>cameron@moonlight-stream.org</update_contact>
+	<developer_name>GameAway Team</developer_name>
+	<update_contact>support@gameaway.in</update_contact>
 
 	<launchable type="desktop-id">com.moonlight_stream.Moonlight.desktop</launchable>
 

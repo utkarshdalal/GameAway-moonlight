@@ -392,9 +392,11 @@ int main(int argc, char *argv[])
             qInfo() << "IP from URL scheme:" << ipAddress;
 
             // Now modify argv directly to simulate the desired command line
-            argv[1] = "stream";  // Replace the URL with 'stream'
+            argv[1] = new char[strlen("stream") + 1];
+            strcpy(argv[1], "stream");
             argv[2] = new char[ipAddress.size() + 1];  // Ensure enough space for the IP address
-            argv[3] = "GameAway.in Virtual Gaming PC";  // App name
+            argv[3] = new char[strlen("GameAway.in Virtual Gaming PC") + 1];
+            strcpy(argv[3], "GameAway.in Virtual Gaming PC");
             strcpy(argv[2], ipAddress.toLocal8Bit().constData());  // Copy IP into new argv[3]
             argc = 4;  // Total arguments count now is 4
         }
@@ -433,10 +435,12 @@ int main(int argc, char *argv[])
 
         if (!ipAddress.isEmpty()) {
             // If the API request is successful or a default IP is set
-            argv[1] = "stream";
-            argv[2] = new char[ipAddress.size() + 1];
-            argv[3] = "GameAway.in Virtual Gaming PC";
-            strcpy(argv[2], ipAddress.toLocal8Bit().constData());
+            argv[1] = new char[strlen("stream") + 1];
+            strcpy(argv[1], "stream");
+            argv[2] = new char[ipAddress.size() + 1];  // Ensure enough space for the IP address
+            argv[3] = new char[strlen("GameAway.in Virtual Gaming PC") + 1];
+            strcpy(argv[3], "GameAway.in Virtual Gaming PC");
+            strcpy(argv[2], ipAddress.toLocal8Bit().constData());  // Copy IP into new argv[3]
             argc = 4;
         }
     }
