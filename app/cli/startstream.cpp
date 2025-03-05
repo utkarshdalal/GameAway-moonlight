@@ -200,7 +200,7 @@ public:
                 return i;
             }
         }
-        return 0;
+        return -1;
     }
 
     bool isNotStreaming() const

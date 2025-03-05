@@ -392,8 +392,8 @@ int main(int argc, char *argv[])
             qInfo() << "IP from URL scheme:" << ipAddress;
 
             // Now modify argv directly to simulate the desired command line
-            argv[1] = new char[strlen("stream") + 1];
-            strcpy(argv[1], "stream");
+            argv[1] = new char[strlen("stream_from_url") + 1];
+            strcpy(argv[1], "stream_from_url");
             argv[2] = new char[ipAddress.size() + 1];  // Ensure enough space for the IP address
             argv[3] = new char[strlen("GameAway.in Virtual Gaming PC") + 1];
             strcpy(argv[3], "GameAway.in Virtual Gaming PC");
@@ -435,8 +435,8 @@ int main(int argc, char *argv[])
 
         if (!ipAddress.isEmpty()) {
             // If the API request is successful or a default IP is set
-            argv[1] = new char[strlen("stream") + 1];
-            strcpy(argv[1], "stream");
+            argv[1] = new char[strlen("stream_from_url") + 1];
+            strcpy(argv[1], "stream_from_url");
             argv[2] = new char[ipAddress.size() + 1];  // Ensure enough space for the IP address
             argv[3] = new char[strlen("GameAway.in Virtual Gaming PC") + 1];
             strcpy(argv[3], "GameAway.in Virtual Gaming PC");
@@ -662,7 +662,12 @@ int main(int argc, char *argv[])
 #endif
 
     GlobalCommandLineParser parser;
-    GlobalCommandLineParser::ParseResult commandLineParserResult = parser.parse(app.arguments());
+    QStringList arguments;
+    for (int i = 0; i < argc; ++i) {
+        arguments << QString::fromUtf8(argv[i]);
+    }
+    qInfo() << "arguments is" << arguments;
+    GlobalCommandLineParser::ParseResult commandLineParserResult = parser.parse(arguments);
     switch (commandLineParserResult) {
     case GlobalCommandLineParser::ListRequested:
         // Don't log to the console since it will jumble the command output
@@ -824,6 +829,18 @@ int main(int argc, char *argv[])
             StreamingPreferences* preferences = StreamingPreferences::get();
             StreamCommandLineParser streamParser;
             streamParser.parse(app.arguments(), preferences);
+            QString host    = streamParser.getHost();
+            QString appName = streamParser.getAppName();
+            auto launcher   = new CliStartStream::Launcher(host, appName, preferences, &app);
+            engine.rootContext()->setContextProperty("launcher", launcher);
+            break;
+        }
+    case GlobalCommandLineParser::StreamFromUrlRequested:
+        {
+            initialView = "qrc:/gui/CliStartStreamSegue.qml";
+            StreamingPreferences* preferences = StreamingPreferences::get();
+            StreamCommandLineParser streamParser;
+            streamParser.parse(arguments, preferences);
             QString host    = streamParser.getHost();
             QString appName = streamParser.getAppName();
             auto launcher   = new CliStartStream::Launcher(host, appName, preferences, &app);

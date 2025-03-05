@@ -199,6 +199,8 @@ GlobalCommandLineParser::ParseResult GlobalCommandLineParser::parse(const QStrin
                 return PairRequested;
             } else if (action == "list") {
                 return ListRequested;
+            } else if (action == "stream_from_url") {
+                return StreamFromUrlRequested;
             }
         }
 

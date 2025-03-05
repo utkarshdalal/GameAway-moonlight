@@ -14,6 +14,7 @@ public:
         QuitRequested,
         PairRequested,
         ListRequested,
+        StreamFromUrlRequested,
     };
 
     GlobalCommandLineParser();
