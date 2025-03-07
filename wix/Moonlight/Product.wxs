@@ -1,5 +1,5 @@
 ﻿<?define ShortName = "GameAway" ?>
-<?define FullName = "GameAway Client" ?>
+<?define FullName = "GameAway" ?>
 
 <?define ShortcutName = "$(var.ShortName)" ?>
 <?define ShortcutDesc = "Stream games and other applications from another PC" ?>

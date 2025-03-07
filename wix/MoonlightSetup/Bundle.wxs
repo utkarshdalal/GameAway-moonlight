@@ -11,7 +11,7 @@
 
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal" xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
-  <Bundle Name="GameAway Client"
+  <Bundle Name="GameAway"
           Version="!(bind.PackageVersion.Moonlight_x64)"
           Manufacturer="GameAway"
           UpgradeCode="466fa35d-4be4-40ef-9ce5-afadc3b63bc5"

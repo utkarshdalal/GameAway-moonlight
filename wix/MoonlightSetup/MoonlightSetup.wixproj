@@ -6,6 +6,7 @@
     <DefineConstants>Debug</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
+    <OutputName>GameAwaySetup</OutputName>
     <OutputPath>$(INSTALLER_FOLDER)\</OutputPath>
     <IntermediateOutputPath>$(BUILD_FOLDER)\</IntermediateOutputPath>
   </PropertyGroup>
