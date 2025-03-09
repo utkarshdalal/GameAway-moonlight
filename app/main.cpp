@@ -328,7 +328,7 @@ int main(int argc, char *argv[])
         if (IS_UNSPECIFIED_HANDLE(oldConErr))
     #endif
         {
-            s_LoggerFile = new QFile("/users/utkarshdalal/Desktop/gameaway-log.log");
+            s_LoggerFile = new QFile(tempDir.filePath(QString("Moonlight-%1.log").arg(QDateTime::currentSecsSinceEpoch())));
             if (s_LoggerFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
                 QTextStream(stderr) << "Redirecting log output to " << s_LoggerFile->fileName() << Qt::endl;
                 s_LoggerStream.setDevice(s_LoggerFile);
