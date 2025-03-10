@@ -127,11 +127,13 @@ public:
                             // Handle response here
                             qDebug() << "Success: " << response;
                             event.computer->pairState = NvComputer::PS_PAIRED;
-                            if (m_ComputerManager->forceUpdateAppList(event.computer)) {
-                                qDebug() << "Forced appList update succeeded.";
-                            } else {
-                                qDebug() << "Forced appList update failed.";
-                            }
+                            QTimer::singleShot(5000, [this, event]() {
+                                if (m_ComputerManager->forceUpdateAppList(event.computer)) {
+                                    qDebug() << "Forced appList update succeeded.";
+                                } else {
+                                    qDebug() << "Forced appList update failed.";
+                                }
+                            });
                             m_State = StateSeekApp;
                             m_Computer = event.computer;
                             m_TimeoutTimer->start(APP_SEEK_TIMEOUT);
